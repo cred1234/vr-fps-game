@@ -1,5 +1,5 @@
 // A-Frame + WebXR Meta Quest FPS Game
-// Simple game with a single target, dot crosshair, unlimited ammo
+// Simple game with a disk target, dot crosshair, unlimited ammo, and hit marker
 
 <html>
   <head>
@@ -20,12 +20,14 @@
         </a-camera>
       </a-entity>
 
-      <!-- Target -->
-      <a-entity id="target"
-        geometry="primitive: sphere; radius: 0.2"
-        material="color: green"
-        position="0 1.6 -5"
-      ></a-entity>
+      <!-- Target (disk with concentric rings) -->
+      <a-entity id="target" position="0 1.6 -5">
+        <a-circle radius="0.5" rotation="0 0 0" color="#FFFFFF"></a-circle>
+        <a-ring radius-inner="0.1" radius-outer="0.2" rotation="0 0 0" color="#FF0000"></a-ring>
+        <a-ring radius-inner="0.2" radius-outer="0.3" rotation="0 0 0" color="#FF9900"></a-ring>
+        <a-ring radius-inner="0.3" radius-outer="0.4" rotation="0 0 0" color="#FFFF00"></a-ring>
+        <a-ring radius-inner="0.4" radius-outer="0.5" rotation="0 0 0" color="#00FF00"></a-ring>
+      </a-entity>
 
       <!-- Ground and background -->
       <a-plane rotation="-90 0 0" width="10" height="10" color="#7BC8A4"></a-plane>
@@ -58,14 +60,30 @@
             camera.object3D.getWorldPosition(origin);
 
             const raycaster = new THREE.Raycaster(origin, direction);
-            const intersects = raycaster.intersectObject(document.querySelector('#target').object3D, true);
+            const targetObj = document.querySelector('#target');
+            const intersects = raycaster.intersectObject(targetObj.object3D, true);
 
             if (intersects.length > 0) {
-              document.querySelector('#target').setAttribute('material', 'color', 'red');
               console.log('Hit!');
+              const hitPoint = intersects[0].point;
+              this.spawnHitMarker(hitPoint);
             } else {
               console.log('Miss');
             }
+          },
+
+          spawnHitMarker: function (position) {
+            const scene = document.querySelector('a-scene');
+            const marker = document.createElement('a-sphere');
+            marker.setAttribute('radius', '0.01');
+            marker.setAttribute('color', 'black');
+            marker.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+            scene.appendChild(marker);
+
+            // Remove marker after 1.5 seconds
+            setTimeout(() => {
+              scene.removeChild(marker);
+            }, 1500);
           }
         });
       </script>
