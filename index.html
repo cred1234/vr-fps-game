@@ -1,5 +1,5 @@
 // A-Frame + WebXR Meta Quest FPS Game
-// Simple game with a disk target, dot crosshair, unlimited ammo, and hit marker
+// Uses controller for aiming, shows dot where shot hits the target disk
 
 <html>
   <head>
@@ -8,20 +8,26 @@
   <body>
     <a-scene vr-mode-ui="enabled: true" embedded>
 
-      <!-- Camera with gun script -->
+      <!-- Camera rig -->
       <a-entity id="cameraRig" position="0 1.6 0">
-        <a-camera wasd-controls-enabled="false" look-controls="pointerLockEnabled: true">
-          <a-entity 
-            id="crosshair"
-            geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
-            material="color: red; shader: flat"
-            position="0 0 -1"
-          ></a-entity>
-        </a-camera>
+        <a-camera wasd-controls-enabled="false" look-controls="enabled: false"></a-camera>
+      </a-entity>
+
+      <!-- Right-hand controller for aiming and shooting -->
+      <a-entity id="rightHand" laser-controls="hand: right" raycaster="objects: .target" line="color: red; opacity: 0.75"></a-entity>
+
+      <!-- Crosshair attached to controller -->
+      <a-entity id="crosshair"
+                geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
+                material="color: red; shader: flat"
+                position="0 0 -1"
+                rotation="0 0 0"
+                visible="true"
+                laser-controls="hand: right">
       </a-entity>
 
       <!-- Target (disk with concentric rings) -->
-      <a-entity id="target" position="0 1.6 -5">
+      <a-entity id="target" class="target" position="0 1.6 -5">
         <a-circle radius="0.5" rotation="0 0 0" color="#FFFFFF"></a-circle>
         <a-ring radius-inner="0.1" radius-outer="0.2" rotation="0 0 0" color="#FF0000"></a-ring>
         <a-ring radius-inner="0.2" radius-outer="0.3" rotation="0 0 0" color="#FF9900"></a-ring>
@@ -40,33 +46,35 @@
         AFRAME.registerComponent('gun-shoot', {
           init: function () {
             this.isAiming = false;
-            this.el.sceneEl.addEventListener('triggerdown', () => {
+            const rightHand = document.querySelector('#rightHand');
+
+            rightHand.addEventListener('triggerdown', () => {
               this.isAiming = true;
             });
-            this.el.sceneEl.addEventListener('triggerup', () => {
+
+            rightHand.addEventListener('triggerup', () => {
               if (this.isAiming) {
-                this.shoot();
+                this.shootFromController(rightHand);
               }
               this.isAiming = false;
             });
           },
 
-          shoot: function () {
-            const camera = document.querySelector('[camera]');
+          shootFromController: function (controller) {
             const direction = new THREE.Vector3();
-            camera.object3D.getWorldDirection(direction);
-
             const origin = new THREE.Vector3();
-            camera.object3D.getWorldPosition(origin);
+
+            controller.object3D.getWorldDirection(direction);
+            controller.object3D.getWorldPosition(origin);
 
             const raycaster = new THREE.Raycaster(origin, direction);
             const targetObj = document.querySelector('#target');
             const intersects = raycaster.intersectObject(targetObj.object3D, true);
 
             if (intersects.length > 0) {
-              console.log('Hit!');
               const hitPoint = intersects[0].point;
               this.spawnHitMarker(hitPoint);
+              console.log('Hit!');
             } else {
               console.log('Miss');
             }
@@ -80,9 +88,10 @@
             marker.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
             scene.appendChild(marker);
 
-            // Remove marker after 1.5 seconds
             setTimeout(() => {
-              scene.removeChild(marker);
+              if (marker.parentNode) {
+                scene.removeChild(marker);
+              }
             }, 1500);
           }
         });
