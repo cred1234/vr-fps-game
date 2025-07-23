@@ -1,0 +1,75 @@
+// A-Frame + WebXR Meta Quest FPS Game
+// Simple game with a single target, dot crosshair, unlimited ammo
+
+<html>
+  <head>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene vr-mode-ui="enabled: true" embedded>
+
+      <!-- Camera with gun script -->
+      <a-entity id="cameraRig" position="0 1.6 0">
+        <a-camera wasd-controls-enabled="false" look-controls="pointerLockEnabled: true">
+          <a-entity 
+            id="crosshair"
+            geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.015"
+            material="color: red; shader: flat"
+            position="0 0 -1"
+          ></a-entity>
+        </a-camera>
+      </a-entity>
+
+      <!-- Target -->
+      <a-entity id="target"
+        geometry="primitive: sphere; radius: 0.2"
+        material="color: green"
+        position="0 1.6 -5"
+      ></a-entity>
+
+      <!-- Ground and background -->
+      <a-plane rotation="-90 0 0" width="10" height="10" color="#7BC8A4"></a-plane>
+      <a-sky color="#ECECEC"></a-sky>
+
+      <!-- Gun logic -->
+      <a-entity id="gun-handler" gun-shoot></a-entity>
+
+      <script>
+        AFRAME.registerComponent('gun-shoot', {
+          init: function () {
+            this.isAiming = false;
+            this.el.sceneEl.addEventListener('triggerdown', () => {
+              this.isAiming = true;
+            });
+            this.el.sceneEl.addEventListener('triggerup', () => {
+              if (this.isAiming) {
+                this.shoot();
+              }
+              this.isAiming = false;
+            });
+          },
+
+          shoot: function () {
+            const camera = document.querySelector('[camera]');
+            const direction = new THREE.Vector3();
+            camera.object3D.getWorldDirection(direction);
+
+            const origin = new THREE.Vector3();
+            camera.object3D.getWorldPosition(origin);
+
+            const raycaster = new THREE.Raycaster(origin, direction);
+            const intersects = raycaster.intersectObject(document.querySelector('#target').object3D, true);
+
+            if (intersects.length > 0) {
+              document.querySelector('#target').setAttribute('material', 'color', 'red');
+              console.log('Hit!');
+            } else {
+              console.log('Miss');
+            }
+          }
+        });
+      </script>
+
+    </a-scene>
+  </body>
+</html>
